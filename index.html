@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Roman's Endorsement Calculator</title>
+  <title>Roman's Endorsement Calculator - Enhanced</title>
 
   <!-- Enhanced PDF.js loader with multiple CDN fallbacks -->
   <script>
@@ -148,14 +148,14 @@
     .validation-mismatch { background:rgba(239,68,68,.1); color:var(--error); }
     .debug-panel { background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px; padding:12px; margin-top:16px; display:none; }
     .debug-panel.show { display:block; }
-    .debug-text { font-family:monospace; font-size:11px; color:#495057; white-space:pre-wrap; max-height:200px; overflow-y:auto; }
+    .debug-text { font-family:monospace; font-size:11px; color:#495057; white-space:pre-wrap; max-height:400px; overflow-y:auto; }
     @media (max-width:1200px){ .main-container{ grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
   <div class="app-header">
-    <h1 class="app-title">Roman's Endorsement Calculator</h1>
-    <p class="app-subtitle">AP/RP Validation for Trucking Endorsements - Core Systems</p>
+    <h1 class="app-title">Roman's Endorsement Calculator - Enhanced</h1>
+    <p class="app-subtitle">AP/RP Validation for Trucking Endorsements - Improved Parsing Accuracy</p>
   </div>
 
   <div class="main-container">
@@ -176,7 +176,6 @@
         <div class="parsed-item"><div class="parsed-label">Unearned</div><div class="parsed-value" id="parsedUnearned">-</div></div>
         <div class="parsed-item"><div class="parsed-label">Total AP/RP (PDF)</div><div class="parsed-value" id="parsedTotal" style="font-size:16px;">-</div></div>
         <div class="parsed-item"><div class="parsed-label">Detected Type</div><div class="parsed-value" id="parsedType">-</div></div>
-        <!-- New: show UW Fee row if parsed -->
         <div class="parsed-item" id="parsedUwWrap" style="display:none;">
           <div class="parsed-label">UW Fee (PDF): Prior | Endorse | New</div>
           <div class="parsed-value" id="parsedUwFees">-</div>
@@ -195,7 +194,6 @@
         <button class="btn btn-secondary" id="manualEntryBtn">Manual Entry</button>
       </div>
 
-      <!-- Manual Entry Dialog -->
       <div id="manualEntryPanel" style="display:none; margin-top:16px; padding:16px; background:#f8f9fa; border-radius:8px; border:1px solid #dee2e6;">
         <div style="font-weight:500; margin-bottom:12px; color:var(--primary-blue);">Manual PDF Data Entry</div>
         <div style="display:grid; gap:8px;">
@@ -324,7 +322,6 @@
         <div class="result-row"><span class="result-label">Policy Earned Ratio</span><span class="result-value" id="policyEarnedRatio">-</span></div>
         <div class="result-row"><span class="result-label">Unearned Ratio (for proration)</span><span class="result-value" id="endorseEarnedRatio">-</span></div>
         <div class="result-row"><span class="result-label">Premium AP/RP (prorated)</span><span class="result-value" id="premiumAPRP">-</span></div>
-        <!-- Explicit line item: UW fee fully earned -->
         <div class="result-row"><span class="result-label">UW Fee (fully earned)</span><span class="result-value" id="uwFeeEarned">-</span></div>
         <div class="result-row"><span class="result-label">SLT Amount</span><span class="result-value" id="sltAmount">-</span></div>
         <div class="result-row"><span class="result-label">Stamping Fee</span><span class="result-value" id="stampingAmount">-</span></div>
@@ -486,11 +483,10 @@
         uwFee: n('uwFee') - (lastParsed?.originalFees?.uwFee || 0)
       };
 
-      // ✅ RULE: UW/Inspection Fee is fully earned — DO NOT prorate
       const proratedFeeDeltas = {
         policyFee: annualFeeDeltas.policyFee * unearnedRatio,
         brokerFee: annualFeeDeltas.brokerFee * unearnedRatio,
-        uwFee: annualFeeDeltas.uwFee // fully earned (no proration)
+        uwFee: annualFeeDeltas.uwFee
       };
 
       let taxableBase = totalProratedPremiumDelta;
@@ -543,7 +539,6 @@
         annualDeltas,
         proratedDeltas,
         unearnedRatio,
-        // New: for fee reconciliation
         uwFeeDeltaCalc: annualFeeDeltas.uwFee,
         pdfUwEndorsement: lastParsed?.parsedUw?.endorsement ?? null
       });
@@ -603,7 +598,6 @@
       ];
       if(lastParsed?.sltAmount!=null) rows.push({label:'SLT Amount',calculated:calcSLT,parsed:lastParsed.sltAmount});
       if(lastParsed?.stampingAmount!=null) rows.push({label:'Stamping Fee',calculated:calcStamping,parsed:lastParsed.stampingAmount});
-      // New: UW fee delta vs PDF endorsement column
       if(pdfUwEndorsement!=null){
         rows.push({label:'UW Fee Δ (Calc) vs PDF Endorsement', calculated: uwFeeDeltaCalc ?? 0, parsed: pdfUwEndorsement});
       }
@@ -698,15 +692,14 @@
       if(parsed.originalFees){
         if(parsed.originalFees.policyFee!=null) $('policyFee').value=parsed.originalFees.policyFee;
         if(parsed.originalFees.brokerFee!=null) $('brokerFee').value=parsed.originalFees.brokerFee;
-        if(parsed.originalFees.uwFee!=null) $('uwFee').value=parsed.originalFees.uwFee; // set baseline; new will overwrite below if present
+        if(parsed.originalFees.uwFee!=null) $('uwFee').value=parsed.originalFees.uwFee;
       }
       if(parsed.endorsementFees){
         if(parsed.endorsementFees.policyFee!=null) $('policyFee').value=parsed.endorsementFees.policyFee;
         if(parsed.endorsementFees.brokerFee!=null) $('brokerFee').value=parsed.endorsementFees.brokerFee;
-        if(parsed.endorsementFees.uwFee!=null) $('uwFee').value=parsed.endorsementFees.uwFee; // new annual UW fee
+        if(parsed.endorsementFees.uwFee!=null) $('uwFee').value=parsed.endorsementFees.uwFee;
       }
 
-      // Show parsed UW fee trio if available
       if(parsed.parsedUw && (parsed.parsedUw.original!=null || parsed.parsedUw.endorsement!=null || parsed.parsedUw.new!=null)){
         $('parsedUwWrap').style.display='block';
         const a = parsed.parsedUw.original!=null ? fmt(parsed.parsedUw.original) : '-';
@@ -727,7 +720,7 @@
       catch(e){ console.error(e); showToast('Failed to ingest parser data','error'); }
     });
 
-    /* --------------------------- IMPROVED PDF PARSER FOR COVER WHALE --------------------------- */
+    /* --------------------------- IMPROVED PDF PARSER --------------------------- */
     const money=(s)=>{
       if(!s) return null;
       const isNegative = /\(.*\)/.test(s) || /\$-/.test(s) || /\$\s*-/.test(s);
@@ -790,32 +783,6 @@
       if(earnedMatch){ result.earnedDays = parseInt(earnedMatch[1]); result.earnedPercent = parseFloat(earnedMatch[2]); }
       if(unearnedMatch){ result.unearnedDays = parseInt(unearnedMatch[1]); result.unearnedPercent = parseFloat(unearnedMatch[2]); }
       return result;
-    }
-
-    function pickPercent(label,text){
-      const patterns = [
-        new RegExp(`${label}[^\\d%]*([\\d,.]+)\\s*%`,'i'),
-        new RegExp(`${label}\\s*:\\s*([\\d,.]+)\\s*%`,'i'),
-        new RegExp(`${label}\\s+Percentage[^\\d%]*([\\d,.]+)\\s*%`,'i')
-      ];
-      for(const pattern of patterns){
-        const match = pattern.exec(text);
-        if(match) return Number(match[1].replace(/,/g,''));
-      }
-      return null;
-    }
-
-    function pickDays(label,text){
-      const patterns = [
-        new RegExp(`${label}[^\\d]*([\\d,]+)\\s*days?`,'i'),
-        new RegExp(`${label}\\s*:\\s*([\\d,]+)\\s*days?`,'i'),
-        new RegExp(`${label}\\s+Days[^\\d]*([\\d,]+)`,'i')
-      ];
-      for(const pattern of patterns){
-        const match = pattern.exec(text);
-        if(match) return Number(match[1].replace(/,/g,''));
-      }
-      return null;
     }
 
     function pickMoney(labelRegex,text){
@@ -902,7 +869,6 @@
       return {fullText: fullText.trim(), lines};
     }
 
-    // Helper: capture first 3 money tokens within a window of lines
     function captureMoneyTripletFromLines(lines, startIndex, maxLookahead=6){
       const moneyRe = /\$\s*\(?-?[\d,]+\.\d{2}\)?/g;
       let chunk = '';
@@ -918,7 +884,6 @@
       return null;
     }
 
-    // Fallback: capture triplet from text block after label
     function captureMoneyTripletFromText(fullText, label, tailChars=400){
       const idx = fullText.search(label);
       if(idx === -1) return null;
@@ -930,10 +895,55 @@
       return null;
     }
 
+    // IMPROVED: More robust row extraction with context awareness
+    function pullRowAmounts(labelRe, beforeStopMarker = null){
+      const re = new RegExp(labelRe,'i');
+      const stopRe = beforeStopMarker ? new RegExp(beforeStopMarker, 'i') : null;
+      
+      // Find the "Additional Premium and Taxes" section
+      let inCorrectSection = false;
+      let stopSearching = false;
+      
+      for(let i=0; i < window.__PDF_LINES__.length; i++){
+        const line = window.__PDF_LINES__[i];
+        
+        // Detect section start
+        if(/Additional\s+Premium\s+and\s+Taxes/i.test(line)){
+          inCorrectSection = true;
+          continue;
+        }
+        
+        // Stop at finance sections or premium subtotal
+        if(/Endorsement\s+Premium\s+Finance|Premium\s+Subtotal/i.test(line)){
+          stopSearching = true;
+        }
+        
+        if(stopSearching) break;
+        
+        // Only search within the correct section
+        if(inCorrectSection && re.test(line)){
+          const triplet = captureMoneyTripletFromLines(window.__PDF_LINES__, i, 6);
+          if(triplet) {
+            console.log(`Found ${labelRe} at line ${i}:`, triplet);
+            return [triplet.original, triplet.endorsement ?? triplet.new, triplet.new];
+          }
+        }
+        
+        // Additional stop check
+        if(stopRe && stopRe.test(line)){
+          break;
+        }
+      }
+      return null;
+    }
+
     async function parseEndorsementPdf(file){
       const {fullText, lines} = await extractTextFromPdf(file);
+      
+      // Store lines globally for row extraction
+      window.__PDF_LINES__ = lines;
 
-      const debugText = `=== PDF Text Extract (First 1500 chars) ===\n${fullText.slice(0,1500)}\n\n=== Lines Structure ===\n${lines.slice(0,30).join('\n')}`;
+      const debugText = `=== PDF Text Extract (First 2000 chars) ===\n${fullText.slice(0,2000)}\n\n=== Lines Structure (First 40) ===\n${lines.slice(0,40).join('\n')}`;
       $('debugText').textContent = debugText;
 
       const endorsementNumber = extractEndorsementNumber(fullText);
@@ -952,119 +962,100 @@
                          pickFirstDateAfter('To:',fullText);
 
       const earnings = extractEarnings(fullText);
-      const earnedPercent = earnings.earnedPercent || pickPercent('Earned',fullText);
-      const unearnedPercent = earnings.unearnedPercent || pickPercent('Unearned',fullText);
-      const earnedDays = earnings.earnedDays || pickDays('Earned',fullText);
-      const unearnedDays = earnings.unearnedDays || pickDays('Unearned',fullText);
+      const earnedPercent = earnings.earnedPercent;
+      const unearnedPercent = earnings.unearnedPercent;
+      const earnedDays = earnings.earnedDays;
+      const unearnedDays = earnings.unearnedDays;
 
       let premiumDelta = null;
       let totalDelta = null;
       let sltAmount = null;
       let stampingAmount = null;
 
-      function pullRowAmounts(labelRe){
-        const re = new RegExp(labelRe,'i');
-        for(let i=0;i<lines.length;i++){
-          if(re.test(lines[i])){
-            const triplet = captureMoneyTripletFromLines(lines, i, 6);
-            if(triplet) return [triplet.original, triplet.endorsement ?? triplet.new, triplet.new];
-          }
-        }
-        return null;
-      }
-
-      const premiumRow = pullRowAmounts('Premium\\s+Subtotal');
+      // Extract premium rows with improved context
+      const premiumRow = pullRowAmounts('Premium\\s+Subtotal', 'Policy\\s+Fees');
       if(premiumRow && premiumRow.length>=2){
         premiumDelta = premiumRow[1];
       } else {
-        premiumDelta = pickMoney('(?:Premium\\s+)?(?:Change|Delta|Endorsement\\s+Cost)',fullText) ??
-                       pickMoney('Premium\\s+Subtotal.*?Endorsement',fullText);
+        premiumDelta = pickMoney('(?:Premium\\s+)?(?:Change|Delta|Endorsement\\s+Cost)',fullText);
       }
 
-      const sltRow = pullRowAmounts('Surplus\\s+Lines\\s+Tax');
+      const sltRow = pullRowAmounts('Surplus\\s+Lines\\s+Tax', 'Regulatory\\s+Fee');
       if(sltRow && sltRow.length>=2){ sltAmount = sltRow[1]; }
       else { sltAmount = pickMoney('(?:Surplus\\s+Lines?\\s+Tax|SLT)',fullText); }
 
-      const stampingRow = pullRowAmounts('Stamping\\s+Fees?');
+      const stampingRow = pullRowAmounts('Stamping\\s+Fees?', 'Total\\s+Cost');
       if(stampingRow && stampingRow.length>=2){ stampingAmount = stampingRow[1]; }
       else { stampingAmount = pickMoney('(?:Stamping\\s+Fees?|Stamping)',fullText); }
 
       const totalRow = pullRowAmounts('Total\\s+Cost');
       if(totalRow && totalRow.length>=2){ totalDelta = totalRow[1]; }
       else {
-        totalDelta = pickMoney('Total\\s+(?:Cost|AP/?RP|Change|Due)',fullText) ??
-                     pickMoney('Total\\s+Cost.*?Endorsement',fullText);
+        totalDelta = pickMoney('Total\\s+(?:Cost|AP/?RP|Change|Due)',fullText);
       }
 
-      // ===== Robust fee extraction (Underwriting Fee) =====
+      // IMPROVED: Fee extraction with better pattern matching
       function findFeeInTable(feeName){
-        // Expanded synonyms
         const feePatterns = {
-          'policyFee': [
-            /Policy\s+Fees?/i
-          ],
+          'policyFee': [/Policy\s+Fees?/i],
           'uwFee': [
             /Underwriting\s+Fees?/i,
             /Underwriting\s*\/\s*Inspection\s*Fees?/i,
             /Underwriting\s*&\s*Inspection\s*Fees?/i,
             /UW\s*Fees?/i,
-            /UW\s*\/\s*Inspection\s*Fees?/i,
-            /UW\s*&\s*Inspection\s*Fees?/i,
-            /Underwriting\s+Expense/i,
-            /Inspection\s*\/\s*Underwriting\s*Fees?/i
+            /UW\s*\/\s*Inspection\s*Fees?/i
           ],
-          'brokerFee': [
-            /Broker\s+Fees?/i
-          ]
+          'brokerFee': [/Broker\s+Fees?/i]
         };
 
         const pats = feePatterns[feeName] || [];
         for(const pat of pats){
-          for(let i=0;i<lines.length;i++){
+          for(let i=0; i<lines.length; i++){
             if(pat.test(lines[i])){
               const t = captureMoneyTripletFromLines(lines, i, 6);
               if(t) return t;
             }
           }
-          // Fallback: scan the raw text slice near the label
           const textTriplet = captureMoneyTripletFromText(fullText, pat, 500);
           if(textTriplet) return textTriplet;
         }
         return null;
       }
 
+      // IMPROVED: Coverage extraction with better accuracy
       const alCoverage = (()=>{
-        const t = pullRowAmounts('AL[^A-Za-z]?|Auto(?:mobile)?(?:\\s+|-)Liability'); 
+        const t = pullRowAmounts('Auto\\s+Liability', 'Automobile\\s+Physical'); 
         return { original: t?.[0] ?? null, new: t?.[2] ?? null };
       })();
 
       const apdCoverage = (()=>{
-        const t = pullRowAmounts('Automobile\\s+Physical\\s+Damage|Auto(?:mobile)?\\s+Physical(?:\\s+Damage)?|APD\\b');
+        const t = pullRowAmounts('Automobile\\s+Physical\\s+Damage', 'Towing');
         return { original: t?.[0] ?? null, new: t?.[2] ?? null };
       })();
 
+      // CRITICAL FIX: More specific patterns to avoid confusion with finance section
       const mtcCoverage = (()=>{
-        const t = pullRowAmounts('Motor\\s+Truck\\s+Cargo|MTC\\b');
+        const t = pullRowAmounts('Motor\\s+Truck\\s+Cargo', 'Truckers\\s+General');
         return { original: t?.[0] ?? null, new: t?.[2] ?? null };
       })();
 
       const tglCoverage = (()=>{
-        const t = pullRowAmounts('Trucker\'?s?\\s+General\\s+Liability|Truckers?\\s+General\\s+Liability|TGL\\b');
+        const t = pullRowAmounts('Truckers?\\s+General\\s+Liability', 'Non[-\\s]?Trucking');
         return { original: t?.[0] ?? null, new: t?.[2] ?? null };
       })();
 
       const ntlCoverage = (()=>{
-        const t = pullRowAmounts('Non[-\\s]?Trucking\\s+Liability|NTL\\b');
+        const t = pullRowAmounts('Non[-\\s]?Trucking\\s+Liability', 'Premium\\s+Subtotal');
         return { original: t?.[0] ?? null, new: t?.[2] ?? null };
       })();
 
       const towingCoverage = (()=>{
-        const t = pullRowAmounts('Towing(?:[,;]?\\s*(?:Storage|Labor).*(?:Labor|Storage))?');
+        const t = pullRowAmounts('Towing(?:[,;]?\\s*(?:Storage|Labor).*(?:Labor|Storage))?', 'Trailer\\s+Interchange');
         return { original: t?.[0] ?? null, new: t?.[2] ?? null };
       })();
 
       const tiCoverage = (()=>{
-        const t = pullRowAmounts('Trailer\\s+Interchange(?:\\s+Endorsement)?|TI\\b');
+        const t = pullRowAmounts('Trailer\\s+Interchange', 'Motor\\s+Truck\\s+Cargo');
         return { original: t?.[0] ?? null, new: t?.[2] ?? null };
       })();
 
@@ -1120,17 +1111,23 @@
         totalDelta
       };
 
-      // Include premiums/fees if present
       if(Object.values(originalPremiums).some(v=>v!=null)) payload.originalPremiums = originalPremiums;
       if(Object.values(endorsementPremiums).some(v=>v!=null)) payload.endorsementPremiums = endorsementPremiums;
       if(Object.values(originalFees).some(v=>v!=null)) payload.originalFees = originalFees;
       if(Object.values(endorsementFees).some(v=>v!=null)) payload.endorsementFees = endorsementFees;
 
-      // NEW: persist UW fee endorsement (middle column) explicitly
       if(uwFeeData){
         payload.endorsementCosts = { ...(payload.endorsementCosts||{}), uwFee: uwFeeData.endorsement ?? null };
         payload.parsedUw = { original: uwFeeData.original ?? null, endorsement: uwFeeData.endorsement ?? null, new: uwFeeData.new ?? null };
       }
+
+      console.log('Parsed coverage data:', {
+        AL: alCoverage,
+        APD: apdCoverage,
+        MTC: mtcCoverage,
+        TGL: tglCoverage,
+        NTL: ntlCoverage
+      });
 
       if(!payload.state && !payload.totalDelta && !payload.premiumDelta && !payload.endorsementNumber){
         console.log("No meaningful data found in PDF");
@@ -1230,28 +1227,28 @@
 
     $('demoBtn').addEventListener('click', ()=>{
       window.updateFromParser({
-        endorsementNumber:'3',
-        state:'TX',
-        effectiveDate:'2025-06-20',
-        endorsementDate:'2025-08-02',
-        termEndDate:'2026-06-20',
-        earnedDays:43,
-        earnedPercent:11.7808,
-        unearnedDays:322,
-        unearnedPercent:88.2192,
-        premiumDelta:-8020.23,
-        sltAmount:-388.98,
-        stampingAmount:-3.21,
-        totalDelta:-8412.42,
+        endorsementNumber:'1',
+        state:'MI',
+        effectiveDate:'2025-08-08',
+        endorsementDate:'2025-09-25',
+        termEndDate:'2026-08-08',
+        earnedDays:48,
+        earnedPercent:13.1507,
+        unearnedDays:317,
+        unearnedPercent:86.8493,
+        premiumDelta:2120.46,
+        sltAmount:42.41,
+        stampingAmount:0,
+        totalDelta:2173.47,
         originalPremiums:{
-          AL:83032.57, APD:0, MTC:4048.00, TGL:0, NTL:0, Towing:0, TI:6000.00
+          AL:14237.09, APD:1577.50, MTC:949.00, TGL:550.00, NTL:0, Towing:0, TI:0
         },
         endorsementPremiums:{
-          AL:74193.31, APD:0, MTC:3796.00, TGL:0, NTL:0, Towing:0, TI:6000.00
+          AL:16566.12, APD:1690.00, MTC:949.00, TGL:550.00, NTL:0, Towing:0, TI:0
         },
-        originalFees:{ policyFee:700.00, brokerFee:0, uwFee:2796.00 },
-        endorsementFees:{ policyFee:700.00, brokerFee:0, uwFee:2796.00 },
-        parsedUw:{ original:2796.00, endorsement:0.00, new:2796.00 },
+        originalFees:{ policyFee:1200.00, brokerFee:0, uwFee:799.00 },
+        endorsementFees:{ policyFee:1200.00, brokerFee:0, uwFee:799.00 },
+        parsedUw:{ original:799.00, endorsement:0.00, new:799.00 },
         endorsementCosts:{ uwFee:0.00 }
       });
       $('debugPanel').classList.remove('show');
@@ -1259,7 +1256,7 @@
 
     function exportResults(){
       const rows = [
-        ["Roman's Endorsement Calculator Export"],
+        ["Roman's Endorsement Calculator Export - Enhanced"],
         ["Generated:", new Date().toLocaleString()],
         [""],
         ["Input Data"],
@@ -1290,14 +1287,14 @@
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url;
-      a.download=`endorsement_calc_${Date.now()}.csv`;
+      a.download=`endorsement_calc_enhanced_${Date.now()}.csv`;
       a.click();
       showToast('CSV exported successfully!','success');
     }
 
     window.addEventListener('load',()=>{
-      $('state').value='TX';
-      updateStateConfig(stateTaxConfig.TX);
+      $('state').value='MI';
+      updateStateConfig(stateTaxConfig.MI);
       updateActiveCoverages();
 
       setTimeout(()=>{
