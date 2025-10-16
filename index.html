@@ -3,17 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Roman's Endorsement Calculator - Enhanced V2.1</title>
+  <title>Roman's Endorsement Calculator - Enhanced V2.2</title>
 
   <!-- Robust PDF.js loader: pins versions, loads matching worker, and cleanly falls back. -->
   <script>
     (function loadPdfJs(){
-      // guard
       if (window.__PDFJS_BOOTSTRAPPED__) return; 
       window.__PDFJS_BOOTSTRAPPED__ = true;
       window.__PDFJS_READY__ = false;
 
-      // Each entry includes the library URL and the matching worker URL.
       const SOURCES = [
         {
           name: "cdnjs v4.5.136",
@@ -43,7 +41,6 @@
       ];
 
       let idx = 0;
-
       function tryNext(){
         if (idx >= SOURCES.length){
           console.error("All PDF.js CDN sources failed");
@@ -55,46 +52,29 @@
           });
           return;
         }
-
         const s = SOURCES[idx++];
         const script = document.createElement('script');
         script.src = s.lib;
         script.async = true;
         script.crossOrigin = "anonymous";
-
         script.onload = function(){
           try{
-            const lib = window.pdfjsLib || window.pdfjsDistBuildPdf || window.PDFJS; // tolerate older globals
+            const lib = window.pdfjsLib || window.pdfjsDistBuildPdf || window.PDFJS;
             if(!lib) throw new Error("PDF.js object not found after load");
-
-            // Prefer modern global
             window.pdfjsLib = lib;
-
-            // IMPORTANT: specify a real worker to avoid deprecated API + fake worker warnings
             if (window.pdfjsLib.GlobalWorkerOptions){
               window.pdfjsLib.GlobalWorkerOptions.workerSrc = s.worker;
             }
-
-            // Clean legacy options we previously forced
-            try{
-              if (typeof window.pdfjsLib.disableWorker !== 'undefined') delete window.pdfjsLib.disableWorker;
-            }catch(_){}
-
+            try{ if (typeof window.pdfjsLib.disableWorker !== 'undefined') delete window.pdfjsLib.disableWorker; }catch(_){}
             window.__PDFJS_READY__ = true;
             console.log("PDF.js loaded successfully from:", s.name);
           }catch(e){
-            console.error("PDF.js initialization failed:", e);
-            tryNext();
+            console.error("PDF.js initialization failed:", e); tryNext();
           }
         };
-        script.onerror = function(){
-          console.warn("Failed to load PDF.js from:", s.name);
-          tryNext();
-        };
-
+        script.onerror = function(){ console.warn("Failed to load PDF.js from:", s.name); tryNext(); };
         document.head.appendChild(script);
       }
-
       tryNext();
     })();
   </script>
@@ -180,7 +160,7 @@
 </head>
 <body>
   <div class="app-header">
-    <h1 class="app-title">Roman's Endorsement Calculator - Enhanced V2.1</h1>
+    <h1 class="app-title">Roman's Endorsement Calculator - Enhanced V2.2</h1>
     <p class="app-subtitle">AP/RP Validation for Trucking Endorsements - Improved Cover Whale PDF Parsing</p>
   </div>
 
@@ -470,7 +450,7 @@
       const effStr=$('effectiveDate').value, endoStr=$('endorsementDate').value;
       if(!effStr || !endoStr){ showToast('Provide Effective and Endorsement dates','error'); return; }
       const effectiveDate=new Date(effStr), endorsementDate=new Date(endoStr);
-      const termEnd=(lastParsed?.termEndDate)? new Date(lastParsed.termEndDate) : new Date(new Date(effStr).setFullYear(new Date(effStr).getFullYear()+1));
+      const termEnd=(lastParsed?.termEndDate)? new Date(lastParsed.termEndDate) : new Date(new Date(effStr).getFullYear()+1, new Date(effStr).getMonth(), new Date(effStr).getDate());
       const days=(a,b)=>Math.max(0,Math.round((b-a)/(1000*60*60*24)));
       const policyTermDays=Math.max(1,days(effectiveDate,termEnd));
       const earnedDays=days(effectiveDate,endorsementDate);
@@ -491,16 +471,7 @@
         TI: n('endorseTI') - n('origTI')
       };
 
-      const proratedDeltas = {
-        AL: annualDeltas.AL * unearnedRatio,
-        APD: annualDeltas.APD * unearnedRatio,
-        MTC: annualDeltas.MTC * unearnedRatio,
-        TGL: annualDeltas.TGL * unearnedRatio,
-        NTL: annualDeltas.NTL * unearnedRatio,
-        Towing: annualDeltas.Towing * unearnedRatio,
-        TI: annualDeltas.TI * unearnedRatio
-      };
-
+      const proratedDeltas = Object.fromEntries(Object.entries(annualDeltas).map(([k,v])=>[k, v*unearnedRatio]));
       const totalProratedPremiumDelta = Object.values(proratedDeltas).reduce((sum, val) => sum + val, 0);
 
       const annualFeeDeltas = {
@@ -517,15 +488,9 @@
 
       let taxableBase = totalProratedPremiumDelta;
       switch(cfg.taxableBase){
-        case 'ALL':
-          taxableBase += proratedFeeDeltas.policyFee + proratedFeeDeltas.brokerFee + proratedFeeDeltas.uwFee; 
-          break;
-        case 'No Broker Fees':
-          taxableBase += proratedFeeDeltas.policyFee + proratedFeeDeltas.uwFee; 
-          break;
-        case 'UW':
-          taxableBase += proratedFeeDeltas.uwFee; 
-          break;
+        case 'ALL': taxableBase += proratedFeeDeltas.policyFee + proratedFeeDeltas.brokerFee + proratedFeeDeltas.uwFee; break;
+        case 'No Broker Fees': taxableBase += proratedFeeDeltas.policyFee + proratedFeeDeltas.uwFee; break;
+        case 'UW': taxableBase += proratedFeeDeltas.uwFee; break;
       }
 
       const sltAmount=taxableBase*cfg.sltRate, stampingAmount=taxableBase*cfg.stampingRate;
@@ -572,8 +537,8 @@
       if(lastParsed?.totalDelta!=null){
         const pill=$('validationPill'); pill.style.display='inline-flex';
         const parsedType = lastParsed.totalDelta>=0 ? 'Additional Premium (AP)' : 'Return Premium (RP)';
-        if(parsedType===detectedType){ pill.className='validation-pill validation-ok'; pill.textContent='Type Match: OK'; }
-        else { pill.className='validation-pill validation-mismatch'; pill.textContent='Type Mismatch'; }
+        pill.className = 'validation-pill ' + (parsedType===detectedType ? 'validation-ok' : 'validation-mismatch');
+        pill.textContent = parsedType===detectedType ? 'Type Match: OK' : 'Type Mismatch';
       }
       showToast('Calculation completed (UW fee treated as fully earned)','success');
     }
@@ -588,39 +553,49 @@
         Towing: { orig: parseFloat($('origTowing').value)||0, new: parseFloat($('endorseTowing').value)||0 },
         TI: { orig: parseFloat($('origTI').value)||0, new: parseFloat($('endorseTI').value)||0 }
       };
-
       document.querySelectorAll('.chip').forEach(chip => {
         const coverage = chip.getAttribute('data-coverage');
         const values = coverageInputs[coverage];
-
         if(values){
           const exists = values.orig !== 0 || values.new !== 0;
-
           if(exists){
-            chip.classList.add('active');
-            chip.classList.remove('inactive');
-
+            chip.classList.add('active'); chip.classList.remove('inactive');
             if(values.orig !== 0 && values.new !== 0 && values.orig === values.new){
-              chip.style.opacity = '0.8';
-              chip.title = `${coverage}: No change (${fmt(values.orig)})`;
+              chip.style.opacity = '0.8'; chip.title = `${coverage}: No change (${fmt(values.orig)})`;
             } else if(values.orig !== values.new){
-              chip.style.opacity = '1';
-              chip.title = `${coverage}: ${fmt(values.orig)} → ${fmt(values.new)}`;
+              chip.style.opacity = '1'; chip.title = `${coverage}: ${fmt(values.orig)} → ${fmt(values.new)}`;
             }
           } else {
-            chip.classList.remove('active');
-            chip.classList.add('inactive');
-            chip.style.opacity = '0.4';
-            chip.title = `${coverage}: Not included`;
+            chip.classList.remove('active'); chip.classList.add('inactive');
+            chip.style.opacity='0.4'; chip.title = `${coverage}: Not included`;
           }
         }
       });
     }
 
+    /* ---------- Reconciliation (now pulls from parsed values or DOM fallback) ---------- */
     function performReconciliation({calcTotal,calcPremium,calcSLT,calcStamping,annualDeltas,proratedDeltas,unearnedRatio,uwFeeDeltaCalc,pdfUwEndorsement}){
+      const moneyFromText=(s)=>{
+        if(!s) return null;
+        const m = s.match(/-?\$?\(?\s*[\d,]+(?:\.\d{2})?\)?/);
+        if(!m) return null;
+        const txt = m[0];
+        const neg = /\(.*\)/.test(txt) || /-\s*\$/.test(txt) || /^\s*-\s*/.test(txt);
+        const num = Number(txt.replace(/[^\d.]/g,''));
+        return Number.isFinite(num) ? (neg? -num : num) : null;
+        };
+
+      // Fallback: if parsing didn't return totals, try "Total AP/RP (PDF)" pill text.
+      let parsedTotal = (lastParsed && typeof lastParsed.totalDelta !== 'undefined') ? lastParsed.totalDelta : null;
+      if(parsedTotal==null){
+        const t = $('parsedTotal')?.textContent || '';
+        const v = moneyFromText(t);
+        if(v!=null) parsedTotal = v;
+      }
+
       const rows=[
-        {label:'Total AP/RP',calculated:calcTotal,parsed:lastParsed?.totalDelta},
-        {label:'Premium Delta (Prorated)',calculated:calcPremium,parsed:lastParsed?.premiumDelta}
+        {label:'Total AP/RP',calculated:calcTotal,parsed:parsedTotal},
+        {label:'Premium Delta (Prorated)',calculated:calcPremium,parsed:lastParsed?.premiumDelta ?? null}
       ];
       if(lastParsed?.sltAmount!=null) rows.push({label:'SLT Amount',calculated:calcSLT,parsed:lastParsed.sltAmount});
       if(lastParsed?.stampingAmount!=null) rows.push({label:'Stamping Fee',calculated:calcStamping,parsed:lastParsed.stampingAmount});
@@ -655,11 +630,9 @@
 
         for(const [coverage, values] of Object.entries(coverageInputs)){
           const exists = values.orig !== 0 || values.new !== 0;
-
           if(exists){
             const annualDelta = values.new - values.orig;
             const prorated = proratedDeltas[coverage];
-
             if(annualDelta !== 0){
               html += `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">
                 <span style="color:var(--gray-600);">${coverage}:</span>
@@ -735,7 +708,6 @@
       }
 
       updateActiveCoverages();
-
       $('parsedData').style.display='block';
       calculateEndorsement();
       showToast('PDF data ingested','success');
@@ -746,18 +718,16 @@
       catch(e){ console.error(e); showToast('Failed to ingest parser data','error'); }
     });
 
-    /* --------------------------- IMPROVED PDF PARSER V2 --------------------------- */
+    /* --------------------------- IMPROVED PDF PARSER V2 (broader labels) --------------------------- */
     const money=(s)=>{
       if(!s) return null;
-      const isNegative = /\(.*\)/.test(s) || /\$-/.test(s) || /\$\s*-/.test(s);
+      const isNegative = /\(.*\)/.test(s) || /\$-/.test(s) || /\$\s*-/.test(s) || /^\s*-\s*/.test(s);
       const cleaned = s.replace(/[^\d\-.]/g,'');
       const n=Number(cleaned);
       return Number.isFinite(n)? (isNegative ? -Math.abs(n) : n) : null;
     };
-
     const toISO=(dstr)=>{
-      const d=new Date(dstr);
-      if(isNaN(d)) return null;
+      const d=new Date(dstr); if(isNaN(d)) return null;
       const y=d.getFullYear(), m=('0'+(d.getMonth()+1)).slice(-2), da=('0'+d.getDate()).slice(-2);
       return `${y}-${m}-${da}`;
     };
@@ -770,7 +740,7 @@
       ];
       for(const pattern of addressPatterns){
         const match = text.match(pattern);
-        if(match && stateTaxConfig[match[1]].toUpperCase){
+        if(match && stateTaxConfig[match[1].toUpperCase()]){
           return match[1].toUpperCase();
         }
       }
@@ -809,11 +779,7 @@
       ];
       for(const pattern of earnedPatterns){
         const match = text.match(pattern);
-        if(match){
-          result.earnedDays = parseInt(match[1]);
-          result.earnedPercent = parseFloat(match[2]);
-          break;
-        }
+        if(match){ result.earnedDays = parseInt(match[1]); result.earnedPercent = parseFloat(match[2]); break; }
       }
       const unearnedPatterns = [
         /Unearned:\s*(\d+)\s*days?\s*\(?([\d.]+)\s*%?\)?/i,
@@ -821,141 +787,132 @@
       ];
       for(const pattern of unearnedPatterns){
         const match = text.match(pattern);
-        if(match){
-          result.unearnedDays = parseInt(match[1]);
-          result.unearnedPercent = parseFloat(match[2]);
-          break;
-        }
+        if(match){ result.unearnedDays = parseInt(match[1]); result.unearnedPercent = parseFloat(match[2]); break; }
       }
       return result;
     }
 
     function parseTableRow(lines, startIdx, label){
-      for(let i = startIdx; i < Math.min(startIdx + 20, lines.length); i++){
-        if(lines[i].includes(label)){
-          const moneyRe = /\$\s*\(?-?[\d,]+\.[\d]{2}\)?/g;
+      for(let i = startIdx; i < Math.min(startIdx + 30, lines.length); i++){
+        if(new RegExp(label, 'i').test(lines[i])){
+          const moneyRe = /\$\s*\(?-?[\d,]+(?:\.\d{2})?\)?/g;
           const matches = [...lines[i].matchAll(moneyRe)].map(m => money(m[0]));
-          if(matches.length >= 3){
-            return { prior: matches[0], endorsement: matches[1], new: matches[2] };
-          } else if(matches.length === 2){
-            return { prior: matches[0], endorsement: matches[1], new: null };
-          }
+          if(matches.length >= 3) return { prior: matches[0], endorsement: matches[1], new: matches[2] };
+          if(matches.length === 2) return { prior: matches[0], endorsement: matches[1], new: null };
         }
       }
       return null;
     }
 
+    function firstNonNull(...vals){ return vals.find(v => v != null) ?? null; }
+
     async function extractTextFromPdf(file){
       if(!window.__PDFJS_READY__ || !window.pdfjsLib) throw new Error('PDF.js not loaded - Please use manual entry');
       const buf=await file.arrayBuffer();
-
       let pdf;
-      try {
-        pdf = await pdfjsLib.getDocument({data:buf}).promise; // worker provided globally by loader
-      } catch(e1) {
-        try {
-          pdf = await pdfjsLib.getDocument(new Uint8Array(buf)).promise;
-        } catch(e2) {
-          throw new Error('Failed to parse PDF - Try manual entry');
-        }
-      }
+      try { pdf = await pdfjsLib.getDocument({data:buf}).promise; }
+      catch(e1){ try { pdf = await pdfjsLib.getDocument(new Uint8Array(buf)).promise; } catch(e2){ throw new Error('Failed to parse PDF - Try manual entry'); } }
 
-      let fullText='';
-      let lines = [];
-
+      let fullText=''; let lines = [];
       for(let p=1;p<=pdf.numPages;p++){
         const page=await pdf.getPage(p);
         const content=await page.getTextContent({normalizeWhitespace:true});
-
-        let pageLines = [];
-        let currentLine = [];
-        let lastY = null;
-
+        let pageLines = [], currentLine = [], lastY = null;
         content.items.forEach(item => {
           if(item.str.trim()){
             const y = item.transform ? item.transform[5] : null;
             if(lastY !== null && y !== null && Math.abs(y - lastY) > 2){
-              if(currentLine.length > 0){
-                pageLines.push(currentLine.join(' '));
-                currentLine = [];
-              }
+              if(currentLine.length > 0){ pageLines.push(currentLine.join(' ')); currentLine = []; }
             }
-            currentLine.push(item.str);
-            lastY = y;
+            currentLine.push(item.str); lastY = y;
           }
         });
-
-        if(currentLine.length > 0){
-          pageLines.push(currentLine.join(' '));
-        }
-
-        lines.push(...pageLines);
-        fullText += '\n' + pageLines.join('\n');
+        if(currentLine.length > 0) pageLines.push(currentLine.join(' '));
+        lines.push(...pageLines); fullText += '\n' + pageLines.join('\n');
       }
-
       return {fullText: fullText.trim(), lines};
     }
 
     async function parseEndorsementPdf(file){
       const {fullText, lines} = await extractTextFromPdf(file);
-      const debugText = `=== PDF Text Extract (First 2000 chars) ===\n${fullText.slice(0,2000)}\n\n=== Lines Structure (First 40) ===\n${lines.slice(0,40).join('\n')}`;
-      $('debugText').textContent = debugText;
+      $('debugText').textContent = `=== PDF Text Extract (First 2000 chars) ===\n${fullText.slice(0,2000)}\n\n=== Lines Structure (First 50) ===\n${lines.slice(0,50).join('\n')}`;
 
       const endorsementNumber = extractEndorsementNumber(fullText);
       const state = detectState(fullText);
       const earnings = extractEarnings(fullText);
 
-      let tableStartIdx = -1;
-      for(let i = 0; i < lines.length; i++){
-        if(/Additional\s+Premium\s+and\s+Taxes/i.test(lines[i])){ tableStartIdx = i; break; }
+      // More tolerant table anchor
+      const tableAnchorPatterns = [
+        /Additional\s+Premium\s+and\s+Taxes/i,
+        /Premium\s*(?:&|and)\s*Taxes/i,
+        /Premium\s*Summary/i,
+        /Endorsement\s*Summary/i
+      ];
+      let tableStartIdx = 0;
+      for(let i=0;i<lines.length;i++){
+        if(tableAnchorPatterns.some(re=>re.test(lines[i]))){ tableStartIdx=i; break; }
       }
 
-      let premiumSubtotal = null;
-      let totalCost = null;
-      let sltAmount = null;
-      let stampingAmount = null;
-      let uwFeeData = null;
+      // Label variants
+      const TOTAL_LABELS = [
+        'Total Cost','Total Charge','Total Amount','Total Due','Total Premium and Taxes',
+        'Premium & Taxes Total','Total (All-in)','Total (All In)','Total'
+      ];
+      const PREMIUM_SUBTOTAL_LABELS = [
+        'Premium Subtotal','Premium Change','Premium Delta','Change in Premium','Premiums Subtotal'
+      ];
+      const SLT_LABELS = ['Surplus Lines Tax','Surplus Lines Tax (SLT)','SLT'];
+      const STAMP_LABELS = ['Stamping Fee','Stamping','Stamping Fees'];
+      const UW_LABELS = ['Underwriting Fee','UW Fee','Inspection Fee'];
 
-      if(tableStartIdx >= 0){
-        const subtotalRow = parseTableRow(lines, tableStartIdx, 'Premium Subtotal');
-        if(subtotalRow) premiumSubtotal = subtotalRow.endorsement;
+      const pickRow = (labels)=> labels.map(l=>parseTableRow(lines, tableStartIdx, l)).find(Boolean) || null;
 
-        const totalRow = parseTableRow(lines, tableStartIdx, 'Total Cost');
-        if(totalRow) totalCost = totalRow.endorsement;
+      const subtotalRow = pickRow(PREMIUM_SUBTOTAL_LABELS);
+      const totalRow = pickRow(TOTAL_LABELS);
+      const sltRow = pickRow(SLT_LABELS);
+      const stampingRow = pickRow(STAMP_LABELS);
+      const uwFeeData = pickRow(UW_LABELS);
 
-        const sltRow = parseTableRow(lines, tableStartIdx, 'Surplus Lines Tax');
-        if(sltRow) sltAmount = sltRow.endorsement;
-
-        const stampingRow = parseTableRow(lines, tableStartIdx, 'Stamping Fee');
-        if(stampingRow) stampingAmount = stampingRow.endorsement;
-
-        uwFeeData = parseTableRow(lines, tableStartIdx, 'Underwriting Fee');
-
-        var alCoverage = parseTableRow(lines, tableStartIdx, 'Auto Liability');
-        var apdCoverage = parseTableRow(lines, tableStartIdx, 'Automobile Physical Damage');
-        var mtcCoverage = parseTableRow(lines, tableStartIdx, 'Motor Truck Cargo');
-        var tglCoverage = parseTableRow(lines, tableStartIdx, 'Truckers General Liability');
-        var ntlCoverage = parseTableRow(lines, tableStartIdx, 'Non-Trucking Liability');
-        var towingCoverage = parseTableRow(lines, tableStartIdx, 'Towing');
-        var tiCoverage = parseTableRow(lines, tableStartIdx, 'Trailer Interchange');
+      // If still no "total", try a last-resort scan for any line having 2+ money figures near 'Total'
+      let totalCost = totalRow?.endorsement ?? null;
+      if(totalCost==null){
+        for(let i=tableStartIdx;i<Math.min(tableStartIdx+40,lines.length);i++){
+          if(/total/i.test(lines[i])){
+            const moneyRe = /\$\s*\(?-?[\d,]+(?:\.\d{2})?\)?/g;
+            const ms = [...lines[i].matchAll(moneyRe)].map(m=>money(m[0]));
+            if(ms.length>=2){ totalCost = ms[1]; break; }
+          }
+        }
       }
 
+      const premiumSubtotal = subtotalRow?.endorsement ?? null;
+      const sltAmount = sltRow?.endorsement ?? null;
+      const stampingAmount = stampingRow?.endorsement ?? null;
+
+      // Dates
       const effectiveDate = (() => {
         const match = fullText.match(/Policy\s+Effective[:\s]+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i) ||
-                     fullText.match(/From:\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+                       fullText.match(/From:\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
         return match ? toISO(match[1]) : null;
       })();
-
       const endorsementDate = (() => {
         const match = fullText.match(/Endorsement\s+Date[:\s]+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i) ||
-                     fullText.match(/From:\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+                       fullText.match(/From:\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
         return match ? toISO(match[1]) : null;
       })();
-
       const termEndDate = (() => {
         const match = fullText.match(/To:\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
         return match ? toISO(match[1]) : null;
       })();
+
+      // Coverage rows
+      const alCoverage = parseTableRow(lines, tableStartIdx, 'Auto Liability');
+      const apdCoverage = parseTableRow(lines, tableStartIdx, 'Automobile Physical Damage');
+      const mtcCoverage = parseTableRow(lines, tableStartIdx, 'Motor Truck Cargo');
+      const tglCoverage = parseTableRow(lines, tableStartIdx, 'Truckers General Liability');
+      const ntlCoverage = parseTableRow(lines, tableStartIdx, 'Non-Trucking Liability');
+      const towingCoverage = parseTableRow(lines, tableStartIdx, 'Towing');
+      const tiCoverage = parseTableRow(lines, tableStartIdx, 'Trailer Interchange');
 
       const payload = {
         endorsementNumber,
@@ -967,10 +924,10 @@
         unearnedDays: earnings.unearnedDays,
         earnedPercent: earnings.earnedPercent,
         unearnedPercent: earnings.unearnedPercent,
-        premiumDelta: premiumSubtotal,
+        premiumDelta: premiumSubtotal,             // may be null if not present
         sltAmount,
         stampingAmount,
-        totalDelta: totalCost
+        totalDelta: totalCost                      // used in reconciliation + parsed pill
       };
 
       if(alCoverage || apdCoverage || mtcCoverage || tglCoverage || ntlCoverage || towingCoverage || tiCoverage){
@@ -983,7 +940,6 @@
           Towing: towingCoverage?.prior ?? null,
           TI: tiCoverage?.prior ?? null
         };
-        
         payload.endorsementPremiums = {
           AL: alCoverage?.new ?? null,
           APD: apdCoverage?.new ?? null,
@@ -1059,11 +1015,7 @@
       lastParsed=null;
       document.querySelectorAll('input').forEach(i=>i.value='');
       document.querySelectorAll('select').forEach(s=>s.value='');
-      document.querySelectorAll('.chip').forEach(c=>{
-        c.classList.remove('active');
-        c.classList.add('inactive');
-        c.style.opacity='0.4';
-      });
+      document.querySelectorAll('chip').forEach(c=>{ c.classList.remove('active'); c.classList.add('inactive'); c.style.opacity='0.4'; });
       $('parsedData').style.display='none';
       $('parsedUwWrap').style.display='none';
       $('debugPanel').classList.remove('show');
@@ -1108,12 +1060,8 @@
         sltAmount:42.41,
         stampingAmount:0,
         totalDelta:2173.47,
-        originalPremiums:{
-          AL:14237.09, APD:1577.50, MTC:949.00, TGL:550.00, NTL:0, Towing:0, TI:0
-        },
-        endorsementPremiums:{
-          AL:16566.12, APD:1690.00, MTC:949.00, TGL:550.00, NTL:0, Towing:0, TI:0
-        },
+        originalPremiums:{ AL:14237.09, APD:1577.50, MTC:949.00, TGL:550.00, NTL:0, Towing:0, TI:0 },
+        endorsementPremiums:{ AL:16566.12, APD:1690.00, MTC:949.00, TGL:550.00, NTL:0, Towing:0, TI:0 },
         originalFees:{ policyFee:1200.00, brokerFee:0, uwFee:799.00 },
         endorsementFees:{ policyFee:1200.00, brokerFee:0, uwFee:799.00 },
         parsedUw:{ original:799.00, endorsement:0.00, new:799.00 },
@@ -1124,7 +1072,7 @@
 
     function exportResults(){
       const rows = [
-        ["Roman's Endorsement Calculator Export - Enhanced V2.1"],
+        ["Roman's Endorsement Calculator Export - Enhanced V2.2"],
         ["Generated:", new Date().toLocaleString()],
         [""],
         ["Input Data"],
@@ -1155,7 +1103,7 @@
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url;
-      a.download=`endorsement_calc_enhanced_v2_1_${Date.now()}.csv`;
+      a.download=`endorsement_calc_enhanced_v2_2_${Date.now()}.csv`;
       a.click();
       showToast('CSV exported successfully!','success');
     }
