@@ -3,73 +3,99 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Roman's Endorsement Calculator - Enhanced</title>
+  <title>Roman's Endorsement Calculator - Enhanced V2.1</title>
 
-  <!-- Enhanced PDF.js loader with multiple CDN fallbacks -->
+  <!-- Robust PDF.js loader: pins versions, loads matching worker, and cleanly falls back. -->
   <script>
     (function loadPdfJs(){
-      window.__PDFJS_ATTEMPTS__ = 0;
+      // guard
+      if (window.__PDFJS_BOOTSTRAPPED__) return; 
+      window.__PDFJS_BOOTSTRAPPED__ = true;
       window.__PDFJS_READY__ = false;
 
-      const sources = [
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.min.js",
-        "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.5.136/build/pdf.min.js",
-        "https://unpkg.com/pdfjs-dist@4.5.136/build/pdf.min.js",
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"
+      // Each entry includes the library URL and the matching worker URL.
+      const SOURCES = [
+        {
+          name: "cdnjs v4.5.136",
+          lib: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.min.js",
+          worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.worker.min.js"
+        },
+        {
+          name: "jsDelivr v4.5.136",
+          lib: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.5.136/build/pdf.min.js",
+          worker: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.5.136/build/pdf.worker.min.js"
+        },
+        {
+          name: "unpkg v4.5.136",
+          lib: "https://unpkg.com/pdfjs-dist@4.5.136/build/pdf.min.js",
+          worker: "https://unpkg.com/pdfjs-dist@4.5.136/build/pdf.worker.min.js"
+        },
+        {
+          name: "cdnjs v3.11.174",
+          lib: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+          worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
+        },
+        {
+          name: "cdnjs v2.16.105 (legacy)",
+          lib: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js",
+          worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"
+        }
       ];
 
-      function tryNextSource(){
-        if(window.__PDFJS_ATTEMPTS__ >= sources.length){
+      let idx = 0;
+
+      function tryNext(){
+        if (idx >= SOURCES.length){
           console.error("All PDF.js CDN sources failed");
           document.addEventListener('DOMContentLoaded', function(){
             const uploadArea = document.getElementById('uploadArea');
             if(uploadArea){
-              uploadArea.innerHTML = '<div style="color:#EF4444;font-weight:500;">⚠️ PDF support unavailable<br><small>Try refreshing the page or use manual entry</small></div>';
+              uploadArea.innerHTML = '<div style="color:#EF4444;font-weight:600;">⚠️ PDF support unavailable<br><small>Try refreshing the page or use manual entry</small></div>';
             }
           });
           return;
         }
 
-        const src = sources[window.__PDFJS_ATTEMPTS__++];
+        const s = SOURCES[idx++];
         const script = document.createElement('script');
-        script.src = src;
+        script.src = s.lib;
         script.async = true;
         script.crossOrigin = "anonymous";
 
         script.onload = function(){
-          try {
-            if(window.pdfjsLib || window.pdfjsDistBuildPdf || window.PDFJS){
-              window.pdfjsLib = window.pdfjsLib || window.pdfjsDistBuildPdf || window.PDFJS;
+          try{
+            const lib = window.pdfjsLib || window.pdfjsDistBuildPdf || window.PDFJS; // tolerate older globals
+            if(!lib) throw new Error("PDF.js object not found after load");
 
-              if(window.pdfjsLib.GlobalWorkerOptions){
-                window.pdfjsLib.GlobalWorkerOptions.workerSrc = null;
-                window.pdfjsLib.GlobalWorkerOptions.workerPort = null;
-              }
-              if(window.pdfjsLib.disableWorker !== undefined){
-                window.pdfjsLib.disableWorker = true;
-              }
+            // Prefer modern global
+            window.pdfjsLib = lib;
 
-              window.__PDFJS_READY__ = true;
-              console.log("PDF.js loaded successfully from:", src);
-            } else {
-              throw new Error("PDF.js object not found");
+            // IMPORTANT: specify a real worker to avoid deprecated API + fake worker warnings
+            if (window.pdfjsLib.GlobalWorkerOptions){
+              window.pdfjsLib.GlobalWorkerOptions.workerSrc = s.worker;
             }
-          } catch(e){
+
+            // Clean legacy options we previously forced
+            try{
+              if (typeof window.pdfjsLib.disableWorker !== 'undefined') delete window.pdfjsLib.disableWorker;
+            }catch(_){}
+
+            window.__PDFJS_READY__ = true;
+            console.log("PDF.js loaded successfully from:", s.name);
+          }catch(e){
             console.error("PDF.js initialization failed:", e);
-            tryNextSource();
+            tryNext();
           }
         };
-
         script.onerror = function(){
-          console.warn("Failed to load PDF.js from:", src);
-          tryNextSource();
+          console.warn("Failed to load PDF.js from:", s.name);
+          tryNext();
         };
 
         document.head.appendChild(script);
       }
 
-      tryNextSource();
+      tryNext();
     })();
   </script>
 
@@ -154,8 +180,8 @@
 </head>
 <body>
   <div class="app-header">
-    <h1 class="app-title">Roman's Endorsement Calculator - Enhanced</h1>
-    <p class="app-subtitle">AP/RP Validation for Trucking Endorsements - Improved Parsing Accuracy</p>
+    <h1 class="app-title">Roman's Endorsement Calculator - Enhanced V2.1</h1>
+    <p class="app-subtitle">AP/RP Validation for Trucking Endorsements - Improved Cover Whale PDF Parsing</p>
   </div>
 
   <div class="main-container">
@@ -377,7 +403,7 @@
       LA:{sltRate:.0485,stampingRate:0,fireMarshall:0,slas:0,surcharge:0,windstormFee:0,regulatoryFee:0,taxableBase:'ALL',description:'Louisiana'},
       MA:{sltRate:.04,stampingRate:0,fireMarshall:0,slas:0,surcharge:0,windstormFee:0,regulatoryFee:0,taxableBase:'ALL',description:'Massachusetts'},
       MD:{sltRate:.03,stampingRate:0,fireMarshall:0,slas:0,surcharge:0,windstormFee:0,regulatoryFee:0,taxableBase:'ALL',description:'Maryland'},
-      ME:{sltRate:.03,stampingRate:0,fireMarshall:0,slas:0,surcharge:0,windstormFee:0,regulatoryFee:0,taxableBase:'ALL',description:'Maine'},
+      ME:{sltRate:.03,stampingRate:0,fireMarshall:0,slas:0,surcharge:0,regulatoryFee:0,taxableBase:'ALL',description:'Maine'},
       MI:{sltRate:.02,stampingRate:0,fireMarshall:0,slas:0,surcharge:0,regulatoryFee:.005,windstormFee:0,taxableBase:'ALL',description:'Michigan'},
       MN:{sltRate:.03,stampingRate:.0004,fireMarshall:0,slas:0,surcharge:0,windstormFee:0,regulatoryFee:0,taxableBase:'ALL',description:'Minnesota'},
       MO:{sltRate:.05,stampingRate:0,fireMarshall:0,slas:0,surcharge:0,windstormFee:0,regulatoryFee:0,taxableBase:'ALL',description:'Missouri'},
@@ -486,7 +512,7 @@
       const proratedFeeDeltas = {
         policyFee: annualFeeDeltas.policyFee * unearnedRatio,
         brokerFee: annualFeeDeltas.brokerFee * unearnedRatio,
-        uwFee: annualFeeDeltas.uwFee
+        uwFee: annualFeeDeltas.uwFee // fully earned
       };
 
       let taxableBase = totalProratedPremiumDelta;
@@ -720,7 +746,7 @@
       catch(e){ console.error(e); showToast('Failed to ingest parser data','error'); }
     });
 
-    /* --------------------------- IMPROVED PDF PARSER --------------------------- */
+    /* --------------------------- IMPROVED PDF PARSER V2 --------------------------- */
     const money=(s)=>{
       if(!s) return null;
       const isNegative = /\(.*\)/.test(s) || /\$-/.test(s) || /\$\s*-/.test(s);
@@ -744,14 +770,13 @@
       ];
       for(const pattern of addressPatterns){
         const match = text.match(pattern);
-        if(match && stateTaxConfig[match[1].toUpperCase()]){
+        if(match && stateTaxConfig[match[1]].toUpperCase){
           return match[1].toUpperCase();
         }
       }
       const statePatterns = [
         /(?:State|Jurisdiction|Risk State)[\s:]+([A-Z]{2})\b/i,
-        /\b([A-Z]{2})\s+(?:Surplus|E&S)\b/i,
-        /(?:Policy State|Coverage State)[\s:]+([A-Z]{2})\b/i
+        /\b([A-Z]{2})\s+(?:Surplus|E&S)\b/i
       ];
       for(const pattern of statePatterns){
         const match = text.match(pattern);
@@ -764,10 +789,10 @@
 
     function extractEndorsementNumber(text){
       const patterns = [
-        /Endorsement\s*(?:#|Number|No\.?)\s*[:\s]*(\d+)/i,
+        /Endorsement\s*#\s*(\d+)/i,
+        /Endorsement\s*(?:Number|No\.?)[\s:]*(\d+)/i,
         /Endorse?ment\s*(\d+)/i,
-        /End\.\s*#?\s*(\d+)/i,
-        /(?:Policy\s+)?Change\s*#\s*(\d+)/i
+        /End\.\s*#?\s*(\d+)/i
       ];
       for(const pattern of patterns){
         const match = text.match(pattern);
@@ -778,42 +803,44 @@
 
     function extractEarnings(text){
       const result = { earnedDays: null, earnedPercent: null, unearnedDays: null, unearnedPercent: null };
-      const earnedMatch = text.match(/Earned:\s*(\d+)\s*days?\s*\(?([\d.]+)\s*%?\)?/i);
-      const unearnedMatch = text.match(/Unearned:\s*(\d+)\s*days?\s*\(?([\d.]+)\s*%?\)?/i);
-      if(earnedMatch){ result.earnedDays = parseInt(earnedMatch[1]); result.earnedPercent = parseFloat(earnedMatch[2]); }
-      if(unearnedMatch){ result.unearnedDays = parseInt(unearnedMatch[1]); result.unearnedPercent = parseFloat(unearnedMatch[2]); }
+      const earnedPatterns = [
+        /Earned:\s*(\d+)\s*days?\s*\(?([\d.]+)\s*%?\)?/i,
+        /AL\s+Earned:\s*(\d+)\s*days?\s*\(?([\d.]+)\s*%?\)?/i
+      ];
+      for(const pattern of earnedPatterns){
+        const match = text.match(pattern);
+        if(match){
+          result.earnedDays = parseInt(match[1]);
+          result.earnedPercent = parseFloat(match[2]);
+          break;
+        }
+      }
+      const unearnedPatterns = [
+        /Unearned:\s*(\d+)\s*days?\s*\(?([\d.]+)\s*%?\)?/i,
+        /AL.*Unearned:\s*(\d+)\s*days?\s*\(?([\d.]+)\s*%?\)?/i
+      ];
+      for(const pattern of unearnedPatterns){
+        const match = text.match(pattern);
+        if(match){
+          result.unearnedDays = parseInt(match[1]);
+          result.unearnedPercent = parseFloat(match[2]);
+          break;
+        }
+      }
       return result;
     }
 
-    function pickMoney(labelRegex,text){
-      const patterns = [
-        new RegExp(`${labelRegex}[^\\$\\d\\-]*\\$\\s*(-?[\\d,]+\\.\\d{2})`,'i'),
-        new RegExp(`${labelRegex}[^\\$\\d\\-]*\\$(-?[\\d,]+\\.\\d{2})`,'i'),
-        new RegExp(`${labelRegex}\\s*:\\s*\\$\\s*(-?[\\d,]+\\.\\d{2})`,'i'),
-        new RegExp(`${labelRegex}[^\\d\\-$\\(]*(?:\\$\\s*)?(-?\\(?[\\d,]+\\.\\d{2}\\)?)`,'i')
-      ];
-      for(const pattern of patterns){
-        const match = pattern.exec(text);
-        if(match){
-          const n = money(match[1]);
-          if(n!=null) return n;
+    function parseTableRow(lines, startIdx, label){
+      for(let i = startIdx; i < Math.min(startIdx + 20, lines.length); i++){
+        if(lines[i].includes(label)){
+          const moneyRe = /\$\s*\(?-?[\d,]+\.[\d]{2}\)?/g;
+          const matches = [...lines[i].matchAll(moneyRe)].map(m => money(m[0]));
+          if(matches.length >= 3){
+            return { prior: matches[0], endorsement: matches[1], new: matches[2] };
+          } else if(matches.length === 2){
+            return { prior: matches[0], endorsement: matches[1], new: null };
+          }
         }
-      }
-      return null;
-    }
-
-    function pickFirstDateAfter(label,text){
-      const idx=text.toLowerCase().indexOf(label.toLowerCase());
-      if(idx===-1) return null;
-      const tail=text.slice(idx, idx+200);
-      const patterns = [
-        /([A-Za-z]+\s+\d{1,2},\s+\d{4})/,
-        /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/,
-        /(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/
-      ];
-      for(const pattern of patterns){
-        const match = tail.match(pattern);
-        if(match) return toISO(match[1]);
       }
       return null;
     }
@@ -824,7 +851,7 @@
 
       let pdf;
       try {
-        pdf = await pdfjsLib.getDocument({data:buf, disableWorker:true}).promise;
+        pdf = await pdfjsLib.getDocument({data:buf}).promise; // worker provided globally by loader
       } catch(e1) {
         try {
           pdf = await pdfjsLib.getDocument(new Uint8Array(buf)).promise;
@@ -847,7 +874,7 @@
         content.items.forEach(item => {
           if(item.str.trim()){
             const y = item.transform ? item.transform[5] : null;
-            if(lastY !== null && Math.abs(y - lastY) > 2){
+            if(lastY !== null && y !== null && Math.abs(y - lastY) > 2){
               if(currentLine.length > 0){
                 pageLines.push(currentLine.join(' '));
                 currentLine = [];
@@ -869,231 +896,66 @@
       return {fullText: fullText.trim(), lines};
     }
 
-    function captureMoneyTripletFromLines(lines, startIndex, maxLookahead=6){
-      const moneyRe = /\$\s*\(?-?[\d,]+\.\d{2}\)?/g;
-      let chunk = '';
-      for(let k=0;k<=maxLookahead && startIndex+k<lines.length;k++){
-        chunk += ' ' + lines[startIndex+k];
-        const matches = [...chunk.matchAll(moneyRe)].map(m => money(m[0]));
-        if(matches.length >= 3){
-          return {original: matches[0], endorsement: matches[1], new: matches[2]};
-        }
-      }
-      const matches = [...chunk.matchAll(moneyRe)].map(m => money(m[0]));
-      if(matches.length === 2) return {original: matches[0], endorsement: null, new: matches[1]};
-      return null;
-    }
-
-    function captureMoneyTripletFromText(fullText, label, tailChars=400){
-      const idx = fullText.search(label);
-      if(idx === -1) return null;
-      const moneyRe = /\$\s*\(?-?[\d,]+\.\d{2}\)?/g;
-      const slice = fullText.slice(idx, idx + tailChars);
-      const matches = [...slice.matchAll(moneyRe)].map(m => money(m[0]));
-      if(matches.length >= 3) return {original: matches[0], endorsement: matches[1], new: matches[2]};
-      if(matches.length === 2) return {original: matches[0], endorsement: null, new: matches[1]};
-      return null;
-    }
-
-    // IMPROVED: More robust row extraction with context awareness
-    function pullRowAmounts(labelRe, beforeStopMarker = null){
-      const re = new RegExp(labelRe,'i');
-      const stopRe = beforeStopMarker ? new RegExp(beforeStopMarker, 'i') : null;
-      
-      // Find the "Additional Premium and Taxes" section
-      let inCorrectSection = false;
-      let stopSearching = false;
-      
-      for(let i=0; i < window.__PDF_LINES__.length; i++){
-        const line = window.__PDF_LINES__[i];
-        
-        // Detect section start
-        if(/Additional\s+Premium\s+and\s+Taxes/i.test(line)){
-          inCorrectSection = true;
-          continue;
-        }
-        
-        // Stop at finance sections or premium subtotal
-        if(/Endorsement\s+Premium\s+Finance|Premium\s+Subtotal/i.test(line)){
-          stopSearching = true;
-        }
-        
-        if(stopSearching) break;
-        
-        // Only search within the correct section
-        if(inCorrectSection && re.test(line)){
-          const triplet = captureMoneyTripletFromLines(window.__PDF_LINES__, i, 6);
-          if(triplet) {
-            console.log(`Found ${labelRe} at line ${i}:`, triplet);
-            return [triplet.original, triplet.endorsement ?? triplet.new, triplet.new];
-          }
-        }
-        
-        // Additional stop check
-        if(stopRe && stopRe.test(line)){
-          break;
-        }
-      }
-      return null;
-    }
-
     async function parseEndorsementPdf(file){
       const {fullText, lines} = await extractTextFromPdf(file);
-      
-      // Store lines globally for row extraction
-      window.__PDF_LINES__ = lines;
-
       const debugText = `=== PDF Text Extract (First 2000 chars) ===\n${fullText.slice(0,2000)}\n\n=== Lines Structure (First 40) ===\n${lines.slice(0,40).join('\n')}`;
       $('debugText').textContent = debugText;
 
       const endorsementNumber = extractEndorsementNumber(fullText);
       const state = detectState(fullText);
-
-      const effectiveDate = pickFirstDateAfter('Policy Effective',fullText) ||
-                           pickFirstDateAfter('Effective Date',fullText) ||
-                           pickFirstDateAfter('From:',fullText);
-
-      const endorsementDate = pickFirstDateAfter('Endorsement Date',fullText) ||
-                             pickFirstDateAfter('Change Effective',fullText) ||
-                             pickFirstDateAfter('From:',fullText);
-
-      const termEndDate = pickFirstDateAfter('Policy Expiration',fullText) ||
-                         pickFirstDateAfter('Expiration Date',fullText) ||
-                         pickFirstDateAfter('To:',fullText);
-
       const earnings = extractEarnings(fullText);
-      const earnedPercent = earnings.earnedPercent;
-      const unearnedPercent = earnings.unearnedPercent;
-      const earnedDays = earnings.earnedDays;
-      const unearnedDays = earnings.unearnedDays;
 
-      let premiumDelta = null;
-      let totalDelta = null;
+      let tableStartIdx = -1;
+      for(let i = 0; i < lines.length; i++){
+        if(/Additional\s+Premium\s+and\s+Taxes/i.test(lines[i])){ tableStartIdx = i; break; }
+      }
+
+      let premiumSubtotal = null;
+      let totalCost = null;
       let sltAmount = null;
       let stampingAmount = null;
+      let uwFeeData = null;
 
-      // Extract premium rows with improved context
-      const premiumRow = pullRowAmounts('Premium\\s+Subtotal', 'Policy\\s+Fees');
-      if(premiumRow && premiumRow.length>=2){
-        premiumDelta = premiumRow[1];
-      } else {
-        premiumDelta = pickMoney('(?:Premium\\s+)?(?:Change|Delta|Endorsement\\s+Cost)',fullText);
+      if(tableStartIdx >= 0){
+        const subtotalRow = parseTableRow(lines, tableStartIdx, 'Premium Subtotal');
+        if(subtotalRow) premiumSubtotal = subtotalRow.endorsement;
+
+        const totalRow = parseTableRow(lines, tableStartIdx, 'Total Cost');
+        if(totalRow) totalCost = totalRow.endorsement;
+
+        const sltRow = parseTableRow(lines, tableStartIdx, 'Surplus Lines Tax');
+        if(sltRow) sltAmount = sltRow.endorsement;
+
+        const stampingRow = parseTableRow(lines, tableStartIdx, 'Stamping Fee');
+        if(stampingRow) stampingAmount = stampingRow.endorsement;
+
+        uwFeeData = parseTableRow(lines, tableStartIdx, 'Underwriting Fee');
+
+        var alCoverage = parseTableRow(lines, tableStartIdx, 'Auto Liability');
+        var apdCoverage = parseTableRow(lines, tableStartIdx, 'Automobile Physical Damage');
+        var mtcCoverage = parseTableRow(lines, tableStartIdx, 'Motor Truck Cargo');
+        var tglCoverage = parseTableRow(lines, tableStartIdx, 'Truckers General Liability');
+        var ntlCoverage = parseTableRow(lines, tableStartIdx, 'Non-Trucking Liability');
+        var towingCoverage = parseTableRow(lines, tableStartIdx, 'Towing');
+        var tiCoverage = parseTableRow(lines, tableStartIdx, 'Trailer Interchange');
       }
 
-      const sltRow = pullRowAmounts('Surplus\\s+Lines\\s+Tax', 'Regulatory\\s+Fee');
-      if(sltRow && sltRow.length>=2){ sltAmount = sltRow[1]; }
-      else { sltAmount = pickMoney('(?:Surplus\\s+Lines?\\s+Tax|SLT)',fullText); }
-
-      const stampingRow = pullRowAmounts('Stamping\\s+Fees?', 'Total\\s+Cost');
-      if(stampingRow && stampingRow.length>=2){ stampingAmount = stampingRow[1]; }
-      else { stampingAmount = pickMoney('(?:Stamping\\s+Fees?|Stamping)',fullText); }
-
-      const totalRow = pullRowAmounts('Total\\s+Cost');
-      if(totalRow && totalRow.length>=2){ totalDelta = totalRow[1]; }
-      else {
-        totalDelta = pickMoney('Total\\s+(?:Cost|AP/?RP|Change|Due)',fullText);
-      }
-
-      // IMPROVED: Fee extraction with better pattern matching
-      function findFeeInTable(feeName){
-        const feePatterns = {
-          'policyFee': [/Policy\s+Fees?/i],
-          'uwFee': [
-            /Underwriting\s+Fees?/i,
-            /Underwriting\s*\/\s*Inspection\s*Fees?/i,
-            /Underwriting\s*&\s*Inspection\s*Fees?/i,
-            /UW\s*Fees?/i,
-            /UW\s*\/\s*Inspection\s*Fees?/i
-          ],
-          'brokerFee': [/Broker\s+Fees?/i]
-        };
-
-        const pats = feePatterns[feeName] || [];
-        for(const pat of pats){
-          for(let i=0; i<lines.length; i++){
-            if(pat.test(lines[i])){
-              const t = captureMoneyTripletFromLines(lines, i, 6);
-              if(t) return t;
-            }
-          }
-          const textTriplet = captureMoneyTripletFromText(fullText, pat, 500);
-          if(textTriplet) return textTriplet;
-        }
-        return null;
-      }
-
-      // IMPROVED: Coverage extraction with better accuracy
-      const alCoverage = (()=>{
-        const t = pullRowAmounts('Auto\\s+Liability', 'Automobile\\s+Physical'); 
-        return { original: t?.[0] ?? null, new: t?.[2] ?? null };
+      const effectiveDate = (() => {
+        const match = fullText.match(/Policy\s+Effective[:\s]+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i) ||
+                     fullText.match(/From:\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+        return match ? toISO(match[1]) : null;
       })();
 
-      const apdCoverage = (()=>{
-        const t = pullRowAmounts('Automobile\\s+Physical\\s+Damage', 'Towing');
-        return { original: t?.[0] ?? null, new: t?.[2] ?? null };
+      const endorsementDate = (() => {
+        const match = fullText.match(/Endorsement\s+Date[:\s]+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i) ||
+                     fullText.match(/From:\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+        return match ? toISO(match[1]) : null;
       })();
 
-      // CRITICAL FIX: More specific patterns to avoid confusion with finance section
-      const mtcCoverage = (()=>{
-        const t = pullRowAmounts('Motor\\s+Truck\\s+Cargo', 'Truckers\\s+General');
-        return { original: t?.[0] ?? null, new: t?.[2] ?? null };
+      const termEndDate = (() => {
+        const match = fullText.match(/To:\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+        return match ? toISO(match[1]) : null;
       })();
-
-      const tglCoverage = (()=>{
-        const t = pullRowAmounts('Truckers?\\s+General\\s+Liability', 'Non[-\\s]?Trucking');
-        return { original: t?.[0] ?? null, new: t?.[2] ?? null };
-      })();
-
-      const ntlCoverage = (()=>{
-        const t = pullRowAmounts('Non[-\\s]?Trucking\\s+Liability', 'Premium\\s+Subtotal');
-        return { original: t?.[0] ?? null, new: t?.[2] ?? null };
-      })();
-
-      const towingCoverage = (()=>{
-        const t = pullRowAmounts('Towing(?:[,;]?\\s*(?:Storage|Labor).*(?:Labor|Storage))?', 'Trailer\\s+Interchange');
-        return { original: t?.[0] ?? null, new: t?.[2] ?? null };
-      })();
-
-      const tiCoverage = (()=>{
-        const t = pullRowAmounts('Trailer\\s+Interchange', 'Motor\\s+Truck\\s+Cargo');
-        return { original: t?.[0] ?? null, new: t?.[2] ?? null };
-      })();
-
-      const policyFeeData = findFeeInTable('policyFee');
-      const uwFeeData = findFeeInTable('uwFee');
-      const brokerFeeData = findFeeInTable('brokerFee');
-
-      const originalPremiums = {
-        AL: alCoverage.original,
-        APD: apdCoverage.original,
-        MTC: mtcCoverage.original,
-        TGL: tglCoverage.original,
-        NTL: ntlCoverage.original,
-        Towing: towingCoverage.original,
-        TI: tiCoverage.original
-      };
-
-      const endorsementPremiums = {
-        AL: alCoverage.new,
-        APD: apdCoverage.new,
-        MTC: mtcCoverage.new,
-        TGL: tglCoverage.new,
-        NTL: ntlCoverage.new,
-        Towing: towingCoverage.new,
-        TI: tiCoverage.new
-      };
-
-      const originalFees = {
-        policyFee: policyFeeData?.original ?? null,
-        uwFee: uwFeeData?.original ?? null,
-        brokerFee: brokerFeeData?.original ?? null
-      };
-
-      const endorsementFees = {
-        policyFee: policyFeeData?.new ?? null,
-        uwFee: uwFeeData?.new ?? null,
-        brokerFee: brokerFeeData?.new ?? null
-      };
 
       const payload = {
         endorsementNumber,
@@ -1101,38 +963,46 @@
         effectiveDate,
         endorsementDate,
         termEndDate,
-        earnedDays,
-        unearnedDays,
-        earnedPercent,
-        unearnedPercent,
-        premiumDelta,
+        earnedDays: earnings.earnedDays,
+        unearnedDays: earnings.unearnedDays,
+        earnedPercent: earnings.earnedPercent,
+        unearnedPercent: earnings.unearnedPercent,
+        premiumDelta: premiumSubtotal,
         sltAmount,
         stampingAmount,
-        totalDelta
+        totalDelta: totalCost
       };
 
-      if(Object.values(originalPremiums).some(v=>v!=null)) payload.originalPremiums = originalPremiums;
-      if(Object.values(endorsementPremiums).some(v=>v!=null)) payload.endorsementPremiums = endorsementPremiums;
-      if(Object.values(originalFees).some(v=>v!=null)) payload.originalFees = originalFees;
-      if(Object.values(endorsementFees).some(v=>v!=null)) payload.endorsementFees = endorsementFees;
+      if(alCoverage || apdCoverage || mtcCoverage || tglCoverage || ntlCoverage || towingCoverage || tiCoverage){
+        payload.originalPremiums = {
+          AL: alCoverage?.prior ?? null,
+          APD: apdCoverage?.prior ?? null,
+          MTC: mtcCoverage?.prior ?? null,
+          TGL: tglCoverage?.prior ?? null,
+          NTL: ntlCoverage?.prior ?? null,
+          Towing: towingCoverage?.prior ?? null,
+          TI: tiCoverage?.prior ?? null
+        };
+        
+        payload.endorsementPremiums = {
+          AL: alCoverage?.new ?? null,
+          APD: apdCoverage?.new ?? null,
+          MTC: mtcCoverage?.new ?? null,
+          TGL: tglCoverage?.new ?? null,
+          NTL: ntlCoverage?.new ?? null,
+          Towing: towingCoverage?.new ?? null,
+          TI: tiCoverage?.new ?? null
+        };
+      }
 
       if(uwFeeData){
-        payload.endorsementCosts = { ...(payload.endorsementCosts||{}), uwFee: uwFeeData.endorsement ?? null };
-        payload.parsedUw = { original: uwFeeData.original ?? null, endorsement: uwFeeData.endorsement ?? null, new: uwFeeData.new ?? null };
+        payload.parsedUw = {
+          original: uwFeeData.prior ?? null,
+          endorsement: uwFeeData.endorsement ?? null,
+          new: uwFeeData.new ?? null
+        };
       }
 
-      console.log('Parsed coverage data:', {
-        AL: alCoverage,
-        APD: apdCoverage,
-        MTC: mtcCoverage,
-        TGL: tglCoverage,
-        NTL: ntlCoverage
-      });
-
-      if(!payload.state && !payload.totalDelta && !payload.premiumDelta && !payload.endorsementNumber){
-        console.log("No meaningful data found in PDF");
-        return null;
-      }
       return payload;
     }
 
@@ -1158,9 +1028,7 @@
     async function handleFiles(files){
       const file = files && files[0];
       if(!file){ showToast('No file found','error'); return; }
-      if(!(file.type==='application/pdf' || /\.pdf$/i.test(file.name))){
-        showToast('Please upload a PDF','error'); return;
-      }
+      if(!(file.type==='application/pdf' || /\.pdf$/i.test(file.name))){ showToast('Please upload a PDF','error'); return; }
 
       if(!window.__PDFJS_READY__ || !window.pdfjsLib){
         showToast('PDF library not available - Please use manual entry','error');
@@ -1256,7 +1124,7 @@
 
     function exportResults(){
       const rows = [
-        ["Roman's Endorsement Calculator Export - Enhanced"],
+        ["Roman's Endorsement Calculator Export - Enhanced V2.1"],
         ["Generated:", new Date().toLocaleString()],
         [""],
         ["Input Data"],
@@ -1287,7 +1155,7 @@
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url;
-      a.download=`endorsement_calc_enhanced_${Date.now()}.csv`;
+      a.download=`endorsement_calc_enhanced_v2_1_${Date.now()}.csv`;
       a.click();
       showToast('CSV exported successfully!','success');
     }
@@ -1301,12 +1169,11 @@
         if(!window.__PDFJS_READY__){
           const uploadArea = $('uploadArea');
           uploadArea.innerHTML = `
-            <div style="color:var(--warning);font-weight:500;">
+            <div style="color:var(--warning);font-weight:600;">
               ⚠️ PDF support limited<br>
               <small style="color:var(--gray-600);">Use manual entry or drag PDF to try anyway</small>
             </div>
-            <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple style="display:none;">
-          `;
+            <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple style="display:none;">`;
           document.getElementById('fileInput').addEventListener('change',(e)=>handleFiles(e.target.files));
         }
       }, 2000);
