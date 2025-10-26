@@ -159,6 +159,36 @@
   </style>
 </head>
 <body>
+
+  <!-- Loading screen while checking auth -->
+  <div id="auth-loading" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+    z-index: 10000;
+  ">
+    <div>
+      <h2>Verifying CoverWhale credentials...</h2>
+      <p>Please wait</p>
+    </div>
+  </div>
+
+  <!-- Your actual tool content (hidden until authenticated) -->
+  <div id="app-content" style="display: none;">
+
+    <!-- Optional: Show logged-in user -->
+    <div style="text-align: right; padding: 10px; background: #f0f0f0;">
+      Logged in as: <span id="user-email"></span>
+      <button onclick="auth.logout()">Logout</button>
+    </div>
+
   <div class="app-header">
     <h1 class="app-title">Roman's Endorsement Calculator - Enhanced V2.2</h1>
     <p class="app-subtitle">AP/RP Validation for Trucking Endorsements - Improved Cover Whale PDF Parsing</p>
@@ -1127,5 +1157,27 @@
       }, 2000);
     });
   </script>
+
+  </div>
+  <!-- End of app-content -->
+
+  <!-- Auth script -->
+  <script src="auth.js"></script>
+
+  <script>
+    // Check authentication on page load
+    auth.init().then(isAuthenticated => {
+      if (isAuthenticated) {
+        // Hide loading, show app
+        document.getElementById('auth-loading').style.display = 'none';
+        document.getElementById('app-content').style.display = 'block';
+
+        // Display user info
+        const user = auth.getUser();
+        document.getElementById('user-email').textContent = user.email;
+      }
+    });
+  </script>
+
 </body>
 </html>
